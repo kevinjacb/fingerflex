@@ -5,12 +5,17 @@ import mouse
 from sympy import symbols, Eq, solve
 import screeninfo
 import time
+import tkinter
+import customtkinter
+import threading
 
 cap = cv.VideoCapture(0)
 
 WIDTH = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
 HEIGHT = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
 RESIZE_BY = 1
+
+enable_sys = False
 
 traversed_points = []
 last_click = -1
@@ -19,6 +24,9 @@ drag_enabled = False
 last_coordinates = [0,0]
 
 next_frame = None
+
+customtkinter.set_appearance_mode("System")  # Modes: system (default), light, dark
+customtkinter.set_default_color_theme("blue") 
 
 def callback(result, frame):
     global traversed_points, next_frame, last_click, last_active, drag_enabled, last_coordinates
@@ -121,26 +129,44 @@ def simpleMouseDrag(prev_point, curr_point, drag = False):
     else:
         mouse.move(curr_point[0], curr_point[1], absolute=True, duration=0)
 
-while True:
-    isActive = False # True if the active hand is facing the camera
-    ret, frame = cap.read()
+def setupWindow():
+    app = customtkinter.CTk()
+    app.geometry("500x200")
 
-    # resize frame
-    frame = cv.resize(frame, (int(WIDTH/RESIZE_BY),int( HEIGHT/RESIZE_BY)), interpolation=cv.INTER_AREA)
+    switch = customtkinter.CTkSwitch(app, text="Enable Vision", command=toggleVision)
+    switch.place(relx=0.5, rely=0.5, anchor="center")
 
-    frame = cv.flip(frame, 1) # flip the frame horizontally
+    app.mainloop()
 
-    if not ret:
-        break
+def toggleVision():
+    global enable_sys
+    enable_sys = not enable_sys
 
-    GestureHandler.getLandmarksNGesture(cv.cvtColor(frame,cv.COLOR_BGR2RGB)) # get the landmarks from the active hand
-    
-    if next_frame is not None:
-        cv.imshow("frame", cv.cvtColor(next_frame,cv.COLOR_RGB2BGR)) 
-        next_frame = None  
+if __name__ == "__main__":
 
-    if cv.waitKey(10) & 0xFF == 27:
-        break
+    threading.Thread(target=setupWindow).start()
+ 
+    while True:
+        isActive = False # True if the active hand is facing the camera
+        ret, frame = cap.read()
 
-cap.release()
-cv.destroyAllWindows()
+        # resize frame
+        frame = cv.resize(frame, (int(WIDTH/RESIZE_BY),int( HEIGHT/RESIZE_BY)), interpolation=cv.INTER_AREA)
+
+        frame = cv.flip(frame, 1) # flip the frame horizontally
+
+        if not ret:
+            break
+
+        if enable_sys:
+            GestureHandler.getLandmarksNGesture(cv.cvtColor(frame,cv.COLOR_BGR2RGB)) # get the landmarks from the active hand
+        
+        if next_frame is not None:
+            cv.imshow("frame", cv.cvtColor(next_frame,cv.COLOR_RGB2BGR)) 
+            next_frame = None  
+
+        if cv.waitKey(10) & 0xFF == 27:
+            break
+        
+    cap.release()
+    cv.destroyAllWindows()

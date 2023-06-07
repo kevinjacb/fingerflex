@@ -3,3 +3,4 @@ numpy
 mediapipe
 sympy
 screeninfo
+customtkinter
