@@ -8,6 +8,7 @@ import time
 import tkinter
 import customtkinter
 import threading
+import traceback
 
 cap = cv.VideoCapture(0)
 
@@ -44,18 +45,32 @@ def callback(result, frame):
             for i,handLms in enumerate(result.hand_landmarks):
                 if result.handedness[i][0].display_name == "Right" and handLms[2].x < handLms[17].x:
                     if result.gestures[i][0].category_name == "Open_Palm":
+                        cv.putText(frame, "Active", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         isActive = True
                         index = i
                     elif result.gestures[i][0].category_name == "Closed_Fist":
+                        cv.putText(frame, "Click", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         initiateClick = True
                         index = i
                     elif result.gestures[i][0].category_name == "Victory":
+                        cv.putText(frame, "Drag", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         index = i
                         drag = True
                     elif result.gestures[i][0].category_name == "Thumb_Up":
+                        cv.putText(frame, "Scroll Up", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         scroll_up = True
                         index = i
                     elif result.gestures[i][0].category_name == "Thumb_Down":
+                        cv.putText(frame, "Scroll Down", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                        index = i
+                        scroll_down = True
+                elif result.handedness[i][0].display_name == "Left":
+                    if result.gestures[i][0].category_name == "Thumbs_Up":
+                        cv.putText(frame, "Scroll Up", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                        scroll_up = True
+                        index = i
+                    elif result.gestures[i][0].category_name == "Thumbs_Down":
+                        cv.putText(frame, "Scroll Down", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         index = i
                         scroll_down = True
 
@@ -67,12 +82,12 @@ def callback(result, frame):
                 elif not drag and drag_enabled:
                     drag_enabled = False
             last_active = time.time()
-            traversed_points.append([int(result.hand_landmarks[index][8].x * WIDTH), int(result.hand_landmarks[0][8].y * HEIGHT)])
+            traversed_points.append([int(result.hand_landmarks[index][5].x * WIDTH), int(result.hand_landmarks[0][5].y * HEIGHT)])
             if len(traversed_points) > 10:
                 traversed_points.pop(0)
-            for i in range(len(traversed_points)-1):
-                cv.line(frame, (traversed_points[i][0],traversed_points[i][1]),( traversed_points[i+1][0], traversed_points[i+1][1]),(255,0,0), 5)
-            cv.putText(frame, "Active", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+            # for i in range(len(traversed_points)-1):
+            #     cv.line(frame, (traversed_points[i][0],traversed_points[i][1]),( traversed_points[i+1][0], traversed_points[i+1][1]),(255,0,0), 5)
+            # cv.putText(frame, "Active", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             # handleMouseDrag(traversed_points[-2], traversed_points[-1])
             if len(traversed_points) > 1:
                 simpleMouseDrag(last_coordinates, traversed_points[-1],drag=drag_enabled)
@@ -87,8 +102,9 @@ def callback(result, frame):
             traversed_points = []
         # print(traversed_points,'\n')
     except Exception as e:
-        print("Error occured ",e)
+        traceback.print_exc()
     finally:
+        frame = GestureHandler.drawLandMarks(frame,  result)
         next_frame = frame
 
 GestureHandler = hg.GestureHandler(callback=callback)
@@ -117,11 +133,14 @@ def handleMouseDrag(prev_point, curr_point):
     mouse.move(next_x, next_y, absolute=True, duration=0.1)
 
 def simpleMouseDrag(prev_point, curr_point, drag = False):
+    SCREEN_OFFSET = 0.75
+    # prev_point = np.array(prev_point)/SCREEN_OFFSET
+    # curr_point = np.array(curr_point)/SCREEN_OFFSET
     screenWidth, screenHeight = screeninfo.get_monitors()[0].width, screeninfo.get_monitors()[0].height
 
     #map the points to the screen size
-    prev_point = (int(prev_point[0] * screenWidth / WIDTH), int(prev_point[1] * screenHeight / HEIGHT))
-    curr_point = (int(curr_point[0] * screenWidth / WIDTH), int(curr_point[1] * screenHeight / HEIGHT))
+    prev_point = (int(prev_point[0] * screenWidth / (WIDTH*SCREEN_OFFSET)), int(prev_point[1] * screenHeight/ (HEIGHT*SCREEN_OFFSET)))
+    curr_point = (int(curr_point[0] * screenWidth   /( WIDTH*SCREEN_OFFSET)), int(curr_point[1] * screenHeight / (HEIGHT*SCREEN_OFFSET)))
 
     #move the mouse
     if drag:

@@ -3,4 +3,9 @@ numpy
 mediapipe
 sympy
 screeninfo
+<<<<<<< HEAD
 customtkinter
+=======
+customtkinter
+mouse
+>>>>>>> c1fc3f1 (Initial commit)
