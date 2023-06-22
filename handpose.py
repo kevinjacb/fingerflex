@@ -150,10 +150,67 @@ def simpleMouseDrag(prev_point, curr_point, drag = False):
 
 def setupWindow():
     app = customtkinter.CTk()
+    app.title("FingerFlex")
     app.geometry("500x200")
+    app.grid_columnconfigure(0, weight=1)
+    app.grid_columnconfigure(1, weight=1)
+    app.grid_columnconfigure(2, weight=1)
+    app.grid_columnconfigure(3, weight=1)
+    app.grid_rowconfigure(0, weight=1)
+    app.grid_rowconfigure(1, weight=1)
 
-    switch = customtkinter.CTkSwitch(app, text="Enable Vision", command=toggleVision)
-    switch.place(relx=0.5, rely=0.5, anchor="center")
+    switch = customtkinter.CTkSwitch(app, text="Enable Vision",command=toggleVision)
+    switch.grid(row=0, column=0, rowspan=2, columnspan=2, sticky='',)
+
+    #slider current value
+    current_value = customtkinter.DoubleVar()
+
+
+    def get_current_value():
+        global sense
+        sense = 2*round(float(current_value.get()),2)
+        return sense
+
+
+    def slider_changed(event):
+        value_label.configure(text=get_current_value())
+
+
+    # label for the slider
+    slider_label = customtkinter.CTkLabel(
+        app,
+        text='Sensitivity : '
+    )
+
+    slider_label.grid(
+        column=2,
+        row=0,
+        sticky='se',
+    )
+    slider = customtkinter.CTkSlider(master=app,
+                                 width=160,
+                                 height=16,
+                                 border_width=5.5,
+                                 command=slider_changed,
+                                 variable=current_value,)
+
+    slider.grid(
+        column=2,
+        row=1,
+        columnspan=2,
+        sticky='n',
+    )
+
+    # value label
+    value_label = customtkinter.CTkLabel(
+        app,
+        text=get_current_value()
+    )
+    value_label.grid(
+        row=0,
+        column=3,
+        sticky='sw',
+    )
 
     app.mainloop()
 
