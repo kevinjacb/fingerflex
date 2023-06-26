@@ -185,41 +185,46 @@ def setupWindow():
     app.grid_columnconfigure(3, weight=1)
     app.grid_rowconfigure(0, weight=1)
     app.grid_rowconfigure(1, weight=1)
+    app.grid_rowconfigure(2, weight=1)
 
-    switch = customtkinter.CTkSwitch(app, text="Enable Vision",command=toggleVision)
-    switch.grid(row=0, column=0, rowspan=2, columnspan=2, sticky='',)
+    switch = customtkinter.CTkSwitch(app, text="Enable Vision", command=toggleVision)
+    switch.grid(row=0, column=0, rowspan=2, columnspan=2, sticky='')
 
-    #slider current value
-    current_value = customtkinter.DoubleVar()
+    # Slider current values
+    sense_value = customtkinter.DoubleVar()
+    viewport_value = customtkinter.DoubleVar()
 
+    def get_current_value(arg):
+        if arg == 1:
+            sense = 2 * round(float(sense_value.get()), 2)
+            return sense
+        elif arg == 2:
+            viewport = 2 * round(float(viewport_value.get()), 2)
+            return viewport
 
-    def get_current_value():
-        global sense
-        sense = 2*round(float(current_value.get()),2)
-        return sense
+    def slider_changed(arg):
+        if arg == 1:
+            value_label.configure(text=get_current_value(1))
+        elif arg == 2:
+            value_label2.configure(text=get_current_value(2))
 
-
-    def slider_changed(event):
-        value_label.configure(text=get_current_value())
-
-
-    # label for the slider
+    # Label for the slider
     slider_label = customtkinter.CTkLabel(
         app,
         text='Sensitivity : '
     )
-
     slider_label.grid(
         column=2,
         row=0,
         sticky='se',
     )
+
     slider = customtkinter.CTkSlider(master=app,
-                                 width=160,
-                                 height=16,
-                                 border_width=5.5,
-                                 command=slider_changed,
-                                 variable=current_value,)
+                                     width=160,
+                                     height=16,
+                                     border_width=5.5,
+                                     command=lambda event: slider_changed(1),
+                                     variable=sense_value)
 
     slider.grid(
         column=2,
@@ -228,10 +233,10 @@ def setupWindow():
         sticky='n',
     )
 
-    # value label
+    # Value label
     value_label = customtkinter.CTkLabel(
         app,
-        text=get_current_value()
+        text=get_current_value(1)
     )
     value_label.grid(
         row=0,
@@ -239,7 +244,44 @@ def setupWindow():
         sticky='sw',
     )
 
+    slider_label2 = customtkinter.CTkLabel(
+        app,
+        text='Viewport : '
+    )
+    slider_label2.grid(
+        column=2,
+        row=1,
+        sticky='se',
+    )
+
+    slider2 = customtkinter.CTkSlider(master=app,
+                                      width=160,
+                                      height=16,
+                                      border_width=5.5,
+                                      command=lambda event: slider_changed(2),
+                                      variable=viewport_value)
+
+    slider2.grid(
+        column=2,
+        row=2,
+        columnspan=2,
+        sticky='n',
+    )
+
+    # Value label
+    value_label2 = customtkinter.CTkLabel(
+        app,
+        text=get_current_value(2)
+    )
+    value_label2.grid(
+        row=1,
+        column=3,
+        sticky='sw',
+    )
+
     app.mainloop()
+
+
 
 def toggleVision():
     global enable_sys
