@@ -86,3 +86,13 @@ class GestureHandler:
         self.frame = frame
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=np.array(frame,dtype=np.uint8))
         self.gesture_recognizer.recognize_async(mp_image, int(time.time()*1000))
+
+    def getDistance(self,landmark1, landmark2):
+        return np.sqrt((landmark1.x - landmark2.x)**2 + (landmark1.y - landmark2.y)**2 + (landmark1.z - landmark2.z)**2)
+
+    def getAvg(self,landmarks):
+        avg = np.zeros(3)
+        for landmark in landmarks:
+            avg += np.array([landmark.x,landmark.y,landmark.z])
+        avg /= len(landmarks)
+        return avg

@@ -10,7 +10,7 @@ import customtkinter
 import threading
 import traceback
 
-cap = cv.VideoCapture(0)
+cap = cv.VideoCapture(2)
 
 WIDTH = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
 HEIGHT = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
@@ -44,18 +44,18 @@ def callback(result, frame):
         if result.hand_landmarks: #get the landmarks from the active hand
             for i,handLms in enumerate(result.hand_landmarks):
                 if result.handedness[i][0].display_name == "Right" and handLms[2].x < handLms[17].x:
+                    click_pinch_dist = GestureHandler.getDistance(result.hand_landmarks[i][4], result.hand_landmarks[i][12]) # thumb and middle finger
+                    drag_pinch_dist = GestureHandler.getDistance(result.hand_landmarks[i][4], result.hand_landmarks[i][8]) # thumb and index finger
+                    # ref_dist = GestureHandler.getDistance(result.hand_landmarks[i][4], result.hand_landmarks[i][7])
+                    thumb_size = GestureHandler.getDistance(result.hand_landmarks[i][4], result.hand_landmarks[i][3])  
                     if result.gestures[i][0].category_name == "Open_Palm":
                         cv.putText(frame, "Active", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         isActive = True
                         index = i
-                    elif result.gestures[i][0].category_name == "Closed_Fist":
+                    elif result.gestures[i][0].category_name == "Closed_Fist" and False:   # put apple vision pro to shame
                         cv.putText(frame, "Click", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         initiateClick = True
                         index = i
-                    elif result.gestures[i][0].category_name == "Victory":
-                        cv.putText(frame, "Drag", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                        index = i
-                        drag = True
                     elif result.gestures[i][0].category_name == "Thumb_Up":
                         cv.putText(frame, "Scroll Up", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         scroll_up = True
@@ -64,6 +64,19 @@ def callback(result, frame):
                         cv.putText(frame, "Scroll Down", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         index = i
                         scroll_down = True
+                    elif drag_pinch_dist < thumb_size*0.85 and click_pinch_dist > thumb_size * 1.5:
+                        cv.putText(frame, "Drag", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                        index = i
+                        drag = True
+                    elif click_pinch_dist < thumb_size*0.85: # handle click using apple pro vision big deal gesture
+                        '''landmarks ->  8(index)  as ref
+                            landmarks -> 4(index), 12 as click                  
+                        check if the index finger and thumb are close enough 
+                        use depth of wrist to determine the closeness of the fingers
+                        if yes, initiate click
+                        ''' 
+                        initiateClick = True
+                        index = i
                 elif result.handedness[i][0].display_name == "Left":
                     if result.gestures[i][0].category_name == "Thumbs_Up":
                         cv.putText(frame, "Scroll Up", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
@@ -73,24 +86,32 @@ def callback(result, frame):
                         cv.putText(frame, "Scroll Down", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         index = i
                         scroll_down = True
+                
+                    
 
         if isActive or drag: # if active, draw the path
             if drag or isActive:
-                last_coordinates = traversed_points[-1] if len(traversed_points) > 0 else [0,0]
+                landmarks = [result.hand_landmarks[index][2], result.hand_landmarks[index][5], result.hand_landmarks[index][9], result.hand_landmarks[index][13], result.hand_landmarks[index][17], result.hand_landmarks[index][0]]
+                coordinates =  GestureHandler.getAvg(landmarks)
+                last_coordinates = traversed_points[-1] if len(traversed_points) > 0 else [int(coordinates[0] * WIDTH), int(coordinates[1] * HEIGHT)]
                 if drag and not drag_enabled:
                     drag_enabled = True
                 elif not drag and drag_enabled:
                     drag_enabled = False
             last_active = time.time()
-            traversed_points.append([int(result.hand_landmarks[index][5].x * WIDTH), int(result.hand_landmarks[0][5].y * HEIGHT)])
+
+            # set traversed points as the average of landmarks 2,5.9.13,17 and 0
+            # print([int(coordinates[0] * WIDTH), int(coordinates[1] * HEIGHT)])
+            traversed_points.append([int(coordinates[0] * WIDTH), int(coordinates[1] * HEIGHT)])
             if len(traversed_points) > 10:
                 traversed_points.pop(0)
             # for i in range(len(traversed_points)-1):
             #     cv.line(frame, (traversed_points[i][0],traversed_points[i][1]),( traversed_points[i+1][0], traversed_points[i+1][1]),(255,0,0), 5)
             # cv.putText(frame, "Active", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
             # handleMouseDrag(traversed_points[-2], traversed_points[-1])
+            # print(traversed_points)
             if len(traversed_points) > 1:
-                simpleMouseDrag(last_coordinates, traversed_points[-1],drag=drag_enabled)
+                simpleMouseDrag(traversed_points[-2].copy(), traversed_points[-1].copy(),drag=drag_enabled)
         elif scroll_up:
             mouse.wheel(10)
         elif scroll_down:
@@ -133,15 +154,21 @@ def handleMouseDrag(prev_point, curr_point):
     mouse.move(next_x, next_y, absolute=True, duration=0.1)
 
 def simpleMouseDrag(prev_point, curr_point, drag = False):
-    SCREEN_OFFSET = 0.75
+    SCREEN_OFFSET = 2
+    POINT_OFFSET = 1.18
     # prev_point = np.array(prev_point)/SCREEN_OFFSET
     # curr_point = np.array(curr_point)/SCREEN_OFFSET
     screenWidth, screenHeight = screeninfo.get_monitors()[0].width, screeninfo.get_monitors()[0].height
-
+    prev_point[0] = max(prev_point[0] - WIDTH/2.5,0)*POINT_OFFSET
+    prev_point[1] = max(prev_point[1] - HEIGHT/2.5,0)*POINT_OFFSET
+    curr_point[0] = max(curr_point[0] - WIDTH/2.5,0)*POINT_OFFSET
+    curr_point[1] = max(curr_point[1] - HEIGHT/2.5,0)*POINT_OFFSET
     #map the points to the screen size
-    prev_point = (int(prev_point[0] * screenWidth / (WIDTH*SCREEN_OFFSET)), int(prev_point[1] * screenHeight/ (HEIGHT*SCREEN_OFFSET)))
-    curr_point = (int(curr_point[0] * screenWidth   /( WIDTH*SCREEN_OFFSET)), int(curr_point[1] * screenHeight / (HEIGHT*SCREEN_OFFSET)))
+    adjust = (1 -SCREEN_OFFSET)/2 * 0
+    prev_point = (int(((prev_point[0] * screenWidth / WIDTH)*SCREEN_OFFSET) + screenWidth*adjust), int(((prev_point[1] * screenHeight/ HEIGHT)*SCREEN_OFFSET + screenHeight*adjust)))
+    curr_point = (int(((curr_point[0] * screenWidth   / WIDTH)*SCREEN_OFFSET) + screenWidth*adjust), int(((curr_point[1] * screenHeight / HEIGHT)*SCREEN_OFFSET+ screenHeight*adjust)))
 
+    # print("dragging from ", prev_point, " to ", curr_point, "") # debug
     #move the mouse
     if drag:
         mouse.drag(prev_point[0], prev_point[1],curr_point[0], curr_point[1], absolute=True, duration=0)
