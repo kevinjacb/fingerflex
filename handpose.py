@@ -13,7 +13,7 @@ import pyautogui
 import os
 from datetime import datetime
 
-cap = cv.VideoCapture(2)
+cap = cv.VideoCapture(0)
 
 WIDTH = int(cap.get(cv.CAP_PROP_FRAME_WIDTH))
 HEIGHT = int(cap.get(cv.CAP_PROP_FRAME_HEIGHT))
@@ -121,7 +121,20 @@ def callback(result, frame):
                         ''' 
                         initiateClick = True
                         index = i
-                if result.handedness[i][0].display_name == "Right" and  not cursor: # for presentation control
+
+                        
+
+                elif result.handedness[i][0].display_name == "Left":
+                    if result.gestures[i][0].category_name == "Thumb_Up":
+                        cv.putText(frame, "Scroll Up", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                        scroll_up = True
+                        index = i
+                    elif result.gestures[i][0].category_name == "Thumb_Down":
+                        cv.putText(frame, "Scroll Down", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                        index = i
+                        scroll_down = True
+
+                if not cursor: # for presentation control
                     ''' keypoints 4, 3, and 2 should be in a straightline, and 
                     keypoints 5, 6, 7, and 8 should also be in a straightline,
                     keypoints 9, 10, 11, and 12 should be in a straightline,
@@ -150,18 +163,7 @@ def callback(result, frame):
                                 cv.putText(frame, "Previous", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                                 pyautogui.press('left')
                                 print("Previous")
-                        
-
-                elif result.handedness[i][0].display_name == "Left":
-                    if result.gestures[i][0].category_name == "Thumbs_Up":
-                        cv.putText(frame, "Scroll Up", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                        scroll_up = True
-                        index = i
-                    elif result.gestures[i][0].category_name == "Thumbs_Down":
-                        cv.putText(frame, "Scroll Down", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
-                        index = i
-                        scroll_down = True
-                
+                    
                     
 
         if isActive or drag: # if active, draw the path
@@ -364,6 +366,7 @@ def setupWindow():
         column=3,
         sticky='sw',
     )
+
 
     app.mainloop()
 

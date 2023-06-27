@@ -104,7 +104,7 @@ class GestureHandler:
 
     def isStraightLine(self,landmarks):
         slopes = []
-        TOLERANCE = 0.1
+        TOLERANCE = 0.5
         for i in range(len(landmarks)-2):
             slopes.append(self.__getSlope(landmarks[i],landmarks[i+1]))
         # check if all slopes are same with tolerance
