@@ -9,6 +9,7 @@ import tkinter
 import customtkinter
 import threading
 import traceback
+import pyautogui
 
 cap = cv.VideoCapture(2)
 
@@ -23,6 +24,8 @@ last_click = -1
 last_active = -1
 drag_enabled = False
 last_coordinates = [0,0]
+screen_shot_frames = 0 # find how many frames with ss
+without_ss_frames = 0 # find how many frames without ss
 
 next_frame = None
 
@@ -30,7 +33,7 @@ customtkinter.set_appearance_mode("System")  # Modes: system (default), light, d
 customtkinter.set_default_color_theme("blue") 
 
 def callback(result, frame):
-    global traversed_points, next_frame, last_click, last_active, drag_enabled, last_coordinates
+    global traversed_points, next_frame, last_click, last_active, drag_enabled, last_coordinates,screen_shot_frames,without_ss_frames
     #hand index
     index = -1
     isActive = False
@@ -48,6 +51,13 @@ def callback(result, frame):
                     drag_pinch_dist = GestureHandler.getDistance(result.hand_landmarks[i][4], result.hand_landmarks[i][8]) # thumb and index finger
                     # ref_dist = GestureHandler.getDistance(result.hand_landmarks[i][4], result.hand_landmarks[i][7])
                     thumb_size = GestureHandler.getDistance(result.hand_landmarks[i][4], result.hand_landmarks[i][3])  
+
+                    if result.gestures[i][0].category_name != "Closed_Fist" and screen_shot_frames > 0: # handle frames inbetween where gesture detection goes wrong
+                        without_ss_frames += 1
+                        if without_ss_frames == 15:
+                            screen_shot_frames = 0
+                            without_ss_frames = 0
+
                     if result.gestures[i][0].category_name == "Open_Palm":
                         cv.putText(frame, "Active", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         isActive = True
@@ -64,6 +74,16 @@ def callback(result, frame):
                         cv.putText(frame, "Scroll Down", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         index = i
                         scroll_down = True
+                    elif result.gestures[i][0].category_name == "Closed_Fist": # screen shot gesture
+                        screen_shot_frames += 1
+                        if screen_shot_frames == 60:
+                            print("Screenshoted")
+                            screen_shot_frames = 0
+                            without_ss_frames = 0
+                            img = pyautogui.screenshot()
+                            img = cv.cvtColor(np.array(img),cv.COLOR_RGB2BGR)
+                            cv.imwrite("Screenshot.png",img)
+                        
                     elif drag_pinch_dist < thumb_size*0.85 and click_pinch_dist > thumb_size * 1.5:
                         cv.putText(frame, "Drag", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         index = i
