@@ -35,11 +35,18 @@ next_frame = None
 
 customtkinter.set_appearance_mode("System")  # Modes: system (default), light, dark
 customtkinter.set_default_color_theme("blue") 
+viewport_scaling = 1.18
+
+
+last_key_press = 0
+key_press_delay = 1.5
+
+cursor = 1 # 1 for normal cursor/ 0 for presentation
 
 
 
 def callback(result, frame):
-    global traversed_points, next_frame, last_click, last_active, drag_enabled, last_coordinates,screen_shot_frames,without_ss_frames
+    global traversed_points, next_frame, last_click, last_active, drag_enabled, last_coordinates,screen_shot_frames,without_ss_frames, last_key_press
     #hand index
     index = -1
     isActive = False
@@ -64,7 +71,7 @@ def callback(result, frame):
                             screen_shot_frames = 0
                             without_ss_frames = 0
 
-                    if result.gestures[i][0].category_name == "Open_Palm":
+                    if result.gestures[i][0].category_name == "Open_Palm" and cursor:
                         cv.putText(frame, "Active", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         isActive = True
                         index = i
@@ -72,11 +79,11 @@ def callback(result, frame):
                         cv.putText(frame, "Click", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         initiateClick = True
                         index = i
-                    elif result.gestures[i][0].category_name == "Thumb_Up":
+                    elif result.gestures[i][0].category_name == "Thumb_Up" and cursor:
                         cv.putText(frame, "Scroll Up", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         scroll_up = True
                         index = i
-                    elif result.gestures[i][0].category_name == "Thumb_Down":
+                    elif result.gestures[i][0].category_name == "Thumb_Down" and cursor:
                         cv.putText(frame, "Scroll Down", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         index = i
                         scroll_down = True  
@@ -101,11 +108,11 @@ def callback(result, frame):
                             cv.imwrite(os.path.join(screen_shot_folder,datetime_string),img)
 
                         
-                    elif drag_pinch_dist < thumb_size*0.85 and click_pinch_dist > thumb_size * 1.5:
+                    elif drag_pinch_dist < thumb_size*0.85 and click_pinch_dist > thumb_size * 1.5 and cursor:
                         cv.putText(frame, "Drag", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         index = i
                         drag = True
-                    elif click_pinch_dist < thumb_size*0.85: # handle click using apple pro vision big deal gesture
+                    elif click_pinch_dist < thumb_size*0.85 and cursor: # handle click using apple pro vision big deal gesture
                         '''landmarks ->  8(index)  as ref
                             landmarks -> 4(index), 12 as click                  
                         check if the index finger and thumb are close enough 
@@ -114,6 +121,37 @@ def callback(result, frame):
                         ''' 
                         initiateClick = True
                         index = i
+                if result.handedness[i][0].display_name == "Right" and  not cursor: # for presentation control
+                    ''' keypoints 4, 3, and 2 should be in a straightline, and 
+                    keypoints 5, 6, 7, and 8 should also be in a straightline,
+                    keypoints 9, 10, 11, and 12 should be in a straightline,
+                    first set should be perpendicular to the second for a valid gesture
+                    '''
+                    thumb_is_straight = GestureHandler.isStraightLine([result.hand_landmarks[i][4], result.hand_landmarks[i][3], result.hand_landmarks[i][2]])
+                    index_is_straight = GestureHandler.isStraightLine([result.hand_landmarks[i][5], result.hand_landmarks[i][6], result.hand_landmarks[i][7], result.hand_landmarks[i][8]])
+                    middle_is_straight = GestureHandler.isStraightLine([result.hand_landmarks[i][9], result.hand_landmarks[i][10], result.hand_landmarks[i][11], result.hand_landmarks[i][12]])
+                    # print (thumb_is_straight, index_is_straight, middle_is_straight)
+                    if thumb_is_straight and index_is_straight and middle_is_straight:
+                        # get angle between the two lines
+                        # print(GestureHandler.getAngle([result.hand_landmarks[i][4],result.hand_landmarks[i][2]],[result.hand_landmarks[i][5],result.hand_landmarks[i][8]]))
+                        # print(GestureHandler.getAngle([result.hand_landmarks[i][4],result.hand_landmarks[i][2]],[result.hand_landmarks[i][9],result.hand_landmarks[i][12]]))
+                        if GestureHandler.getAngle([result.hand_landmarks[i][4],result.hand_landmarks[i][2]],[result.hand_landmarks[i][5],result.hand_landmarks[i][8]]) > 70 \
+                            and GestureHandler.getAngle([result.hand_landmarks[i][4],result.hand_landmarks[i][2]],[result.hand_landmarks[i][9],result.hand_landmarks[i][12]]) >70:
+                            # check which direction the hand is pointing to
+                            if result.hand_landmarks[i][2].x < result.hand_landmarks[i][8].x and result.hand_landmarks[i][2].x < result.hand_landmarks[i][12].x and \
+                                time.time() - last_key_press > key_press_delay:
+                                last_key_press = time.time()
+                                cv.putText(frame, "Next", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                                pyautogui.press('right')
+                                print("Next")
+                            elif result.hand_landmarks[i][2].x > result.hand_landmarks[i][8].x and result.hand_landmarks[i][2].x > result.hand_landmarks[i][12].x and \
+                                time.time() - last_key_press > key_press_delay:
+                                last_key_press = time.time()
+                                cv.putText(frame, "Previous", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
+                                pyautogui.press('left')
+                                print("Previous")
+                        
+
                 elif result.handedness[i][0].display_name == "Left":
                     if result.gestures[i][0].category_name == "Thumbs_Up":
                         cv.putText(frame, "Scroll Up", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
@@ -192,7 +230,7 @@ def handleMouseDrag(prev_point, curr_point):
 
 def simpleMouseDrag(prev_point, curr_point, drag = False):
     SCREEN_OFFSET = 2
-    POINT_OFFSET = 1.18
+    POINT_OFFSET = viewport_scaling 
     # prev_point = np.array(prev_point)/SCREEN_OFFSET
     # curr_point = np.array(curr_point)/SCREEN_OFFSET
     screenWidth, screenHeight = screeninfo.get_monitors()[0].width, screeninfo.get_monitors()[0].height
@@ -227,17 +265,26 @@ def setupWindow():
     switch = customtkinter.CTkSwitch(app, text="Enable Vision", command=toggleVision)
     switch.grid(row=0, column=0, rowspan=2, columnspan=2, sticky='')
 
+    def toggleMode():
+        global cursor
+        cursor = 1 -cursor
+        mode_switch.configure(text="Cursor Mode" if  cursor else "Presentation Mode")
+
+    mode_switch = customtkinter.CTkSwitch(app,text="Cursor Mode" if  cursor else "Presentation Mode",command=toggleMode)
+    mode_switch.grid(row=1,column=0,rowspan=2,columnspan=2,sticky='')
+
     # Slider current values
     sense_value = customtkinter.DoubleVar()
-    viewport_value = customtkinter.DoubleVar()
+    viewport_value = customtkinter.DoubleVar(value=viewport_scaling)
 
     def get_current_value(arg):
+        global viewport_scaling, sense
         if arg == 1:
-            sense = 2 * round(float(sense_value.get()), 2)
+            sense = round(float(sense_value.get()), 2)
             return sense
         elif arg == 2:
-            viewport = 2 * round(float(viewport_value.get()), 2)
-            return viewport
+            viewport_scaling  = round(float(viewport_value.get()), 2)
+            return viewport_scaling 
 
     def slider_changed(arg):
         if arg == 1:
@@ -295,6 +342,8 @@ def setupWindow():
                                       width=160,
                                       height=16,
                                       border_width=5.5,
+                                      from_ = 0,
+                                      to = 5,
                                       command=lambda event: slider_changed(2),
                                       variable=viewport_value)
 

@@ -96,3 +96,28 @@ class GestureHandler:
             avg += np.array([landmark.x,landmark.y,landmark.z])
         avg /= len(landmarks)
         return avg
+
+    def __getSlope(self,landmark1,landmark2):
+        if abs(landmark1.x - landmark2.x) < 0.0001:
+            return 100000 # vertical line some big numba
+        return (landmark1.y - landmark2.y)/(landmark1.x - landmark2.x)
+
+    def isStraightLine(self,landmarks):
+        slopes = []
+        TOLERANCE = 0.1
+        for i in range(len(landmarks)-2):
+            slopes.append(self.__getSlope(landmarks[i],landmarks[i+1]))
+        # check if all slopes are same with tolerance
+        for i in range(len(slopes)-1):
+            if abs(slopes[i] - slopes[i+1]) > TOLERANCE:
+                return False
+        return True
+
+    def getAngle(self,landmark_list1, landmark_list2):
+        ''' calculates the angle between two lines formed by the landmarks'''
+        # get the slopes of the lines
+        slope1 = self.__getSlope(landmark_list1[0],landmark_list1[1])
+        slope2 = self.__getSlope(landmark_list2[0],landmark_list2[1])
+        # get the angle between the lines
+        angle = abs(np.arctan(abs((slope1 - slope2)/(1 + slope1*slope2))))
+        return angle * 180 / np.pi
