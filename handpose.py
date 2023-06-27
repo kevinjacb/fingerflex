@@ -10,6 +10,8 @@ import customtkinter
 import threading
 import traceback
 import pyautogui
+import os
+from datetime import datetime
 
 cap = cv.VideoCapture(2)
 
@@ -27,10 +29,14 @@ last_coordinates = [0,0]
 screen_shot_frames = 0 # find how many frames with ss
 without_ss_frames = 0 # find how many frames without ss
 
+screen_shot_folder = "screenshots" # current folder as default
+
 next_frame = None
 
 customtkinter.set_appearance_mode("System")  # Modes: system (default), light, dark
 customtkinter.set_default_color_theme("blue") 
+
+
 
 def callback(result, frame):
     global traversed_points, next_frame, last_click, last_active, drag_enabled, last_coordinates,screen_shot_frames,without_ss_frames
@@ -73,16 +79,27 @@ def callback(result, frame):
                     elif result.gestures[i][0].category_name == "Thumb_Down":
                         cv.putText(frame, "Scroll Down", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
                         index = i
-                        scroll_down = True
+                        scroll_down = True  
                     elif result.gestures[i][0].category_name == "Closed_Fist": # screen shot gesture
                         screen_shot_frames += 1
                         if screen_shot_frames == 60:
                             print("Screenshoted")
                             screen_shot_frames = 0
                             without_ss_frames = 0
+
                             img = pyautogui.screenshot()
                             img = cv.cvtColor(np.array(img),cv.COLOR_RGB2BGR)
-                            cv.imwrite("Screenshot.png",img)
+
+                            # Get current datetime
+                            current_datetime = datetime.now()
+
+                            # Get formatted datetime string
+                            datetime_string = current_datetime.strftime("%Y-%m-%d %H-%M-%S")
+
+                            # Save screenshot with datetime in the filename
+                            datetime_string = f'{datetime_string}.png'
+                            cv.imwrite(os.path.join(screen_shot_folder,datetime_string),img)
+
                         
                     elif drag_pinch_dist < thumb_size*0.85 and click_pinch_dist > thumb_size * 1.5:
                         cv.putText(frame, "Drag", (10, 30), cv.FONT_HERSHEY_SIMPLEX, 1, (0, 255, 0), 2)
@@ -308,6 +325,9 @@ def toggleVision():
     enable_sys = not enable_sys
 
 if __name__ == "__main__":
+
+    if not os.path.exists(screen_shot_folder): # create screen shots folder if not exists
+        os.mkdir(screen_shot_folder)
 
     threading.Thread(target=setupWindow).start()
  
