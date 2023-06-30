@@ -303,8 +303,8 @@ def setupWindow():
             for image_path in full_path_data:
                 # print(image_path)
                 dark_image = Image.open(image_path)
-                dark_image.resize((300, 300))
-                ctk_image = ctk.CTkImage(dark_image)
+                dark_image = dark_image.resize((80, 80))
+                ctk_image = ImageTk.PhotoImage(dark_image)
                 ctk_images.append(ctk_image)
             # print(ctk_images)
             return ctk_images
@@ -356,7 +356,7 @@ def setupWindow():
     app = customtkinter.CTk()
     app.title("FingerFlex")
     app.geometry("600x400")
-    app.iconphoto(True, ImageTk.PhotoImage(file='assets/bg.jpg'))
+    # app.iconbitmap("assets/folder.png")
     app.grid_columnconfigure(0, weight=1)
     app.grid_columnconfigure(1, weight=1)
     app.grid_columnconfigure(2, weight=1)
@@ -372,8 +372,8 @@ def setupWindow():
     bg_label.place(x=0,y=0,relwidth=1,relheight=1)
 
     switch = AnimatedButton(app, 'vision')
-    switch.configure(text="Enable Vision",height=100,width=100, command=combine_funcs(toggleVision,switch.trigger_animation))
-    switch.grid(row=0, column=0, rowspan=2, columnspan=2, sticky='')
+    switch.configure(text="Enable Vision",height=100,width=130, command=combine_funcs(toggleVision,switch.trigger_animation),anchor='center')
+    switch.grid(row=0, column=0, rowspan=2, columnspan=2)
 
     def toggleMode():
         global cursor
@@ -381,8 +381,8 @@ def setupWindow():
         mode_switch.configure(text="Cursor Mode" if  cursor else "Presentation Mode")
 
     mode_switch = AnimatedButton(app,'cursor')
-    mode_switch.configure(text="Cursor Mode" if  cursor else "Presentation Mode",height=100,width=100,command=combine_funcs(toggleMode,mode_switch.trigger_animation))
-    mode_switch.grid(row=1,column=0,rowspan=2,columnspan=2,sticky='')
+    mode_switch.configure(text="Cursor Mode" if  cursor else "Presentation Mode",height=100,width=130,command=combine_funcs(toggleMode,mode_switch.trigger_animation),anchor='center')
+    mode_switch.grid(row=1,column=0,rowspan=2,columnspan=2)
     
     # Slider current values
     # sense_value = customtkinter.DoubleVar()
@@ -412,13 +412,12 @@ def setupWindow():
         datetime_string = f'{datetime_string}.png'
         cv.imwrite(os.path.join(screen_shot_folder,datetime_string),img)
     SSbutton = AnimatedButton(app, 'ss')
-    SSbutton.configure(text="Take Screenshot",height=50,width=100, command=combine_funcs(screenshot,SSbutton.trigger_animation))
+    SSbutton.configure(text="Take Screenshot",height=100,width=100, command=combine_funcs(screenshot,SSbutton.trigger_animation))
     SSbutton.grid(
         column=2,
         row=0,
         columnspan=2,
         sticky='s',
-        pady=2,
     )
     
     def folder():
@@ -448,8 +447,9 @@ def setupWindow():
         image_label.config(image=tk_image)
         image_label.image = tk_image  # Keep a reference to prevent image from being garbage collected
         
-        
-    SSfolder = customtkinter.CTkButton(app, text="Browse Files", command=folder)
+    folder = Image.open("assets/folder.png")
+    folder = folder.resize((20,20))
+    SSfolder = customtkinter.CTkButton(app, text="Browse Files",image=ImageTk.PhotoImage(folder), command=folder)
     SSfolder.grid(
         column=2,
         row=1,
@@ -457,26 +457,34 @@ def setupWindow():
         sticky='n',
         pady=2,
     )
-
-
-    slider_label2 = customtkinter.CTkLabel(
+    view = Image.open("assets/area-graph.png")
+    view = view.resize((40,40))
+    slider_button = customtkinter.CTkButton(
         app,
         text='Viewport : ',
+        bg_color='#1f6aa5',
+        height=80,width=80,
+        compound='top',
+        image=ImageTk.PhotoImage(view),
     )
-    slider_label2.grid(
+    slider_button.grid(
         column=2,
         row=1,
         sticky='se',
     )
 
     slider2 = customtkinter.CTkSlider(master=app,
-                                      width=160,
+                                      width=130,
                                       height=16,
-                                      border_width=5.5,
+                                      border_width=10,
                                       from_ = 0,
                                       to = 5,
                                       command=lambda event: slider_changed(2),
-                                      variable=viewport_value)
+                                      variable=viewport_value,
+                                      bg_color='#1f6aa5',
+                                      fg_color='white',
+                                      button_color='#09004f',
+                                      )
 
     slider2.grid(
         column=2,
@@ -486,30 +494,18 @@ def setupWindow():
     )
 
     # Value label
-    value_label2 = customtkinter.CTkLabel(
+    value_label2 = customtkinter.CTkButton(
         app,
-        text=get_current_value(2)
+        text=get_current_value(2),
+        height=80,width=50,
+        bg_color='#1f6aa5',
+
     )
     value_label2.grid(
         row=1,
         column=3,
         sticky='sw',
     )
-
-    def import_folder(self,light_path,dark_path):
-        image_paths = []
-        for path in (light_path,dark_path):
-            for _, __, image_data in walk(path):
-                # print(int(image_data[1].split('.')[0][-5:]))
-                sorted_data = sorted(image_data, key=lambda x: int(x.split('.')[0][-5:]))
-                full_path_data = [path+'/'+i for i in sorted_data]
-                image_paths.append(full_path_data)
-        image_paths = zip(*image_paths)
-        ctk_images = []
-        for image_path in image_paths:
-            ctk_image = customtkinter.CTkImage(light_image=Image.open(image_path[0]),dark_image=Image.open(image_path[1]))
-            ctk_images.append(ctk_image)
-        return ctk_images
 
     def on_closing():
         cap.release()  # Release the camera capture
