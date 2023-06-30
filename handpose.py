@@ -1,3 +1,4 @@
+from tkinter import filedialog
 import cv2 as cv
 import numpy as np
 import handgestures as hg
@@ -12,6 +13,10 @@ import traceback
 import pyautogui
 import os
 from datetime import datetime
+import sys
+from PIL import Image,ImageTk
+from os import walk
+
 
 cap = cv.VideoCapture(0)
 
@@ -255,7 +260,7 @@ def simpleMouseDrag(prev_point, curr_point, drag = False):
 def setupWindow():
     app = customtkinter.CTk()
     app.title("FingerFlex")
-    app.geometry("500x200")
+    app.geometry("500x400")
     app.grid_columnconfigure(0, weight=1)
     app.grid_columnconfigure(1, weight=1)
     app.grid_columnconfigure(2, weight=1)
@@ -289,46 +294,68 @@ def setupWindow():
             return viewport_scaling 
 
     def slider_changed(arg):
-        if arg == 1:
-            value_label.configure(text=get_current_value(1))
-        elif arg == 2:
+        if arg == 2:
             value_label2.configure(text=get_current_value(2))
 
-    # Label for the slider
-    slider_label = customtkinter.CTkLabel(
-        app,
-        text='Sensitivity : '
-    )
-    slider_label.grid(
+    
+
+    
+    def screenshot():
+        img = pyautogui.screenshot()
+        img = cv.cvtColor(np.array(img),cv.COLOR_RGB2BGR)
+        # Get current datetime
+        current_datetime = datetime.now()
+        # Get formatted datetime string
+        datetime_string = current_datetime.strftime("%Y-%m-%d %H-%M-%S")
+        # Save screenshot with datetime in the filename
+        datetime_string = f'{datetime_string}.png'
+        cv.imwrite(os.path.join(screen_shot_folder,datetime_string),img)
+    SSbutton = customtkinter.CTkButton(app, text="Take Screenshot", command=screenshot)
+    SSbutton.grid(
         column=2,
         row=0,
-        sticky='se',
+        columnspan=2,
+        sticky='s',
+        pady=2,
     )
+    
+    def folder():
+        filename = filedialog.askopenfilename(initialdir = "./screenshots",
+                                          title = "Select a File",
+                                          filetypes = (
+                                                        ("all files",
+                                                        "*.*"),
+                                                        ("Text files",
+                                                        "*.txt*"),
+                                                       ))
+        image_path = filename  # Replace with the actual path to your image file
+        image = Image.open(image_path)
 
-    slider = customtkinter.CTkSlider(master=app,
-                                     width=160,
-                                     height=16,
-                                     border_width=5.5,
-                                     command=lambda event: slider_changed(1),
-                                     variable=sense_value)
+        # Create a Tkinter window
+        window = tkinter.Toplevel()
+        window.title("Image Viewer")
 
-    slider.grid(
+        # Create a Tkinter label to display the image
+        image_label = tkinter.Label(window)
+        image_label.pack()
+
+        # Convert the PIL image to Tkinter-compatible image
+        tk_image = ImageTk.PhotoImage(image)
+
+        # Set the image in the label
+        image_label.config(image=tk_image)
+        image_label.image = tk_image  # Keep a reference to prevent image from being garbage collected
+        
+        
+    SSfolder = customtkinter.CTkButton(app, text="Browse Files", command=folder)
+    SSfolder.grid(
         column=2,
         row=1,
         columnspan=2,
         sticky='n',
+        pady=2,
     )
 
-    # Value label
-    value_label = customtkinter.CTkLabel(
-        app,
-        text=get_current_value(1)
-    )
-    value_label.grid(
-        row=0,
-        column=3,
-        sticky='sw',
-    )
 
     slider_label2 = customtkinter.CTkLabel(
         app,
@@ -367,6 +394,26 @@ def setupWindow():
         sticky='sw',
     )
 
+    def import_folder(self,light_path,dark_path):
+        image_paths = []
+        for path in (light_path,dark_path):
+            for _, __, image_data in walk(path):
+                # print(int(image_data[1].split('.')[0][-5:]))
+                sorted_data = sorted(image_data, key=lambda x: int(x.split('.')[0][-5:]))
+                full_path_data = [path+'/'+i for i in sorted_data]
+                image_paths.append(full_path_data)
+        image_paths = zip(*image_paths)
+        ctk_images = []
+        for image_path in image_paths:
+            ctk_image = customtkinter.CTkImage(light_image=Image.open(image_path[0]),dark_image=Image.open(image_path[1]))
+            ctk_images.append(ctk_image)
+        return ctk_images
+
+    def on_closing():
+        cap.release()  # Release the camera capture
+        sys.exit()  # Exit the program
+
+    app.protocol("WM_DELETE_WINDOW", on_closing) 
 
     app.mainloop()
 
