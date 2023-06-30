@@ -16,6 +16,7 @@ from datetime import datetime
 import sys
 from PIL import Image,ImageTk
 from os import walk
+import customtkinter as ctk
 
 
 cap = cv.VideoCapture(0)
@@ -258,9 +259,104 @@ def simpleMouseDrag(prev_point, curr_point, drag = False):
         mouse.move(curr_point[0], curr_point[1], absolute=True, duration=0)
 
 def setupWindow():
+    class AnimatedButton(ctk.CTkButton):
+        def __init__(self, parent, dark_path):
+            
+        # 	# animation logic setup
+            self.frames = self.import_folders( dark_path)
+            # print(self.frames)
+            self.frame_index = 0
+            self.animation_length = len(self.frames) - 1
+            self.animation_status = ctk.StringVar(value = 'start')
+
+            self.animation_status.trace('w', self.animate)
+
+            super().__init__(
+                master = parent, 
+                text = 'A animated button',
+                image=self.frames[self.frame_index],
+                compound = 'top',)
+            # self.pack(expand = True)
+
+        # def infinite_animate(self):
+        # 	self.frame_index += 1
+        # 	self.frame_index = 0 if self.frame_index > self.animation_length else self.frame_index 
+        # 	self.configure(image = self.frames[self.frame_index])
+        # 	self.after(20, self.infinite_animate)
+
+        def import_folders(self, dark_path):
+            
+            # image_paths = []
+            
+            for _, __, image_data in walk(dark_path):
+                # print(image_data)
+                sorted_data = sorted(
+                    image_data, 
+                    key = lambda item: int(item.split('.')[0][-2:]))
+                # print(sorted_data)
+                full_path_data = [dark_path + '/' + item for item in sorted_data]
+                # image_paths.append(full_path_data)
+            # image_paths = zip(*image_paths)
+            # print(image_paths)
+            
+            ctk_images = []
+            for image_path in full_path_data:
+                # print(image_path)
+                dark_image = Image.open(image_path)
+                dark_image.resize((300, 300))
+                ctk_image = ctk.CTkImage(dark_image)
+                ctk_images.append(ctk_image)
+            # print(ctk_images)
+            return ctk_images
+
+        def trigger_animation(self):
+            if self.animation_status.get() == 'start':
+                self.frame_index = 0
+                self.animation_status.set('forward')
+            if self.animation_status.get() == 'end':
+                self.frame_index = self.animation_length
+                self.animation_status.set('backward')
+
+        def animate(self, *args):
+            # print(self.frame_index)
+            if self.animation_status.get() == 'forward':
+                self.frame_index += 1
+                self.configure(image = self.frames[self.frame_index])
+
+                if self.frame_index < self.animation_length:
+                    self.after(20, self.animate)
+                else:
+                    self.animation_status.set('end')
+
+            if self.animation_status.get() == 'backward':
+                self.frame_index -= 1
+                self.configure(image = self.frames[self.frame_index])
+
+                if self.frame_index > 0:
+                    self.after(20, self.animate)
+                else:
+                    self.animation_status.set('start')
+
+
+    def combine_funcs(*funcs):
+  
+        # this function will call the passed functions
+        # with the arguments that are passed to the functions
+        def inner_combined_func(*args, **kwargs):
+            for f in funcs:
+    
+                # Calling functions with arguments, if any
+                f(*args, **kwargs)
+    
+        # returning the reference of inner_combined_func
+        # this reference will have the called result of all
+        # the functions that are passed to the combined_funcs
+        return inner_combined_func
+
     app = customtkinter.CTk()
     app.title("FingerFlex")
-    app.geometry("500x400")
+    app.geometry("600x400")
+    app.iconphoto(True, ImageTk.PhotoImage(file='assets/bg.jpg'))
     app.grid_columnconfigure(0, weight=1)
     app.grid_columnconfigure(1, weight=1)
     app.grid_columnconfigure(2, weight=1)
@@ -268,8 +364,15 @@ def setupWindow():
     app.grid_rowconfigure(0, weight=1)
     app.grid_rowconfigure(1, weight=1)
     app.grid_rowconfigure(2, weight=1)
+    image = Image.open("assets/bg.jpg")
+    image = image.resize((600,400))
+    bg_image = ImageTk.PhotoImage(image)
 
-    switch = customtkinter.CTkSwitch(app, text="Enable Vision", command=toggleVision)
+    bg_label = customtkinter.CTkLabel(app,image=bg_image,text="")
+    bg_label.place(x=0,y=0,relwidth=1,relheight=1)
+
+    switch = AnimatedButton(app, 'vision')
+    switch.configure(text="Enable Vision",height=100,width=100, command=combine_funcs(toggleVision,switch.trigger_animation))
     switch.grid(row=0, column=0, rowspan=2, columnspan=2, sticky='')
 
     def toggleMode():
@@ -277,19 +380,17 @@ def setupWindow():
         cursor = 1 -cursor
         mode_switch.configure(text="Cursor Mode" if  cursor else "Presentation Mode")
 
-    mode_switch = customtkinter.CTkSwitch(app,text="Cursor Mode" if  cursor else "Presentation Mode",command=toggleMode)
+    mode_switch = AnimatedButton(app,'cursor')
+    mode_switch.configure(text="Cursor Mode" if  cursor else "Presentation Mode",height=100,width=100,command=combine_funcs(toggleMode,mode_switch.trigger_animation))
     mode_switch.grid(row=1,column=0,rowspan=2,columnspan=2,sticky='')
-
+    
     # Slider current values
-    sense_value = customtkinter.DoubleVar()
+    # sense_value = customtkinter.DoubleVar()
     viewport_value = customtkinter.DoubleVar(value=viewport_scaling)
 
     def get_current_value(arg):
-        global viewport_scaling, sense
-        if arg == 1:
-            sense = round(float(sense_value.get()), 2)
-            return sense
-        elif arg == 2:
+        global viewport_scaling
+        if arg == 2:
             viewport_scaling  = round(float(viewport_value.get()), 2)
             return viewport_scaling 
 
@@ -310,7 +411,8 @@ def setupWindow():
         # Save screenshot with datetime in the filename
         datetime_string = f'{datetime_string}.png'
         cv.imwrite(os.path.join(screen_shot_folder,datetime_string),img)
-    SSbutton = customtkinter.CTkButton(app, text="Take Screenshot", command=screenshot)
+    SSbutton = AnimatedButton(app, 'ss')
+    SSbutton.configure(text="Take Screenshot",height=50,width=100, command=combine_funcs(screenshot,SSbutton.trigger_animation))
     SSbutton.grid(
         column=2,
         row=0,
@@ -359,7 +461,7 @@ def setupWindow():
 
     slider_label2 = customtkinter.CTkLabel(
         app,
-        text='Viewport : '
+        text='Viewport : ',
     )
     slider_label2.grid(
         column=2,
