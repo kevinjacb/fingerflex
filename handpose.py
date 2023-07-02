@@ -447,9 +447,9 @@ def setupWindow():
         image_label.config(image=tk_image)
         image_label.image = tk_image  # Keep a reference to prevent image from being garbage collected
         
-    folder = Image.open("assets/folder.png")
-    folder = folder.resize((20,20))
-    SSfolder = customtkinter.CTkButton(app, text="Browse Files",image=ImageTk.PhotoImage(folder), command=folder)
+    folder_img = Image.open("assets/folder.png")
+    folder_img = folder_img.resize((20,20))
+    SSfolder = customtkinter.CTkButton(app, text="Browse Files",image=ImageTk.PhotoImage(folder_img), command=folder)
     SSfolder.grid(
         column=2,
         row=1,
