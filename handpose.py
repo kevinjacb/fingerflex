@@ -431,21 +431,7 @@ def setupWindow():
                                                        ))
         image_path = filename  # Replace with the actual path to your image file
         image = Image.open(image_path)
-
-        # Create a Tkinter window
-        window = tkinter.Toplevel()
-        window.title("Image Viewer")
-
-        # Create a Tkinter label to display the image
-        image_label = tkinter.Label(window)
-        image_label.pack()
-
-        # Convert the PIL image to Tkinter-compatible image
-        tk_image = ImageTk.PhotoImage(image)
-
-        # Set the image in the label
-        image_label.config(image=tk_image)
-        image_label.image = tk_image  # Keep a reference to prevent image from being garbage collected
+        image.show()
         
     folder_img = Image.open("assets/folder.png")
     folder_img = folder_img.resize((20,20))
